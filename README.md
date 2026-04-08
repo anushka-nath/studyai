@@ -13,3 +13,6 @@ AI-powered study tool built with Python and Streamlit.
 - Groq AI (LLaMA 3)
 - YouTube Transcript API
 
+## How to Run
+pip install streamlit groq youtube-transcript-api
+streamlit run app.py

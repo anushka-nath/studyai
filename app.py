@@ -40,7 +40,7 @@ def generate(prompt):
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "system", "content": "You are an expert educator. Your goal is to simplify complex topics into clear, accurate study materials."},
+            {"role": "system", "content": "You are an expert educator. Simplify complex topics into clear, accurate study materials."},
             {"role": "user", "content": prompt}
         ]
     )
@@ -90,12 +90,19 @@ with tab2:
                 if vid_id:
                     try:
                         t_list = YouTubeTranscriptApi.list_transcripts(vid_id)
-                        # Tries to find manually created, then auto-generated transcripts
-                        transcript = t_list.find_transcript(['en']).fetch()
-                        content_to_process = " ".join([t['text'] for t in transcript])
+                        # Robust fetching: Try manual English, then auto English, then any available
+                        try:
+                            transcript = t_list.find_transcript(['en'])
+                        except:
+                            try:
+                                transcript = t_list.find_generated_transcript(['en'])
+                            except:
+                                transcript = next(iter(t_list)) # Just get the first one available
+                        
+                        content_to_process = " ".join([t['text'] for t in transcript.fetch()])
                         st.info(f"✅ Transcript loaded ({len(content_to_process.split())} words)")
                     except Exception:
-                        st.error("❌ Transcript unavailable for this video.")
+                        st.error("❌ No captions available for this video. Try one with CC enabled.")
                 else:
                     st.error("❌ Invalid URL.")
             prompt_prefix = "Summarize this transcript into professional study notes."
@@ -125,4 +132,3 @@ with tab3:
                 st.success("Flashcards Generated!")
                 st.markdown(result)
                 st.download_button("Download Flashcards", result, file_name="flashcards.txt")
-                

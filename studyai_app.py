@@ -1,6 +1,6 @@
 import streamlit as st
 
-# Attempt to import Mermaid, but don't crash if it's missing
+# Safe import for Mermaid
 try:
     import streamlit_mermaid as st_mermaid
     MERMAID_AVAILABLE = True
@@ -10,30 +10,21 @@ except ImportError:
 # --- 1. PAGE CONFIG & SESSION STATE ---
 st.set_page_config(page_title="StudyAI", page_icon="🧠", layout="wide")
 
-# Ensure language selection is remembered across all tabs
+# Global state for language
 if 'output_lang' not in st.session_state:
     st.session_state.output_lang = 'English'
 
-# --- 2. SHARED HELPERS ---
-def language_selection_ui():
-    """Renders the language selector and updates the session state."""
+# --- 2. SHARED UI COMPONENTS ---
+def language_ui(key_suffix):
     languages = ["English", "Spanish", "French", "German", "Hindi", "Bengali"]
-    try:
-        current_index = languages.index(st.session_state.output_lang)
-    except ValueError:
-        current_index = 0
-        
-    selected_lang = st.selectbox(
-        "Select Output Language", 
-        languages, 
-        index=current_index,
-        key=f"lang_{st.session_state.get('active_tab', 'default')}" # Dynamic key
-    )
-    st.session_state.output_lang = selected_lang
+    index = languages.index(st.session_state.output_lang)
+    # Update global state when this specific dropdown changes
+    new_lang = st.selectbox("Select Output Language", languages, index=index, key=f"lang_{key_suffix}")
+    st.session_state.output_lang = new_lang
 
 # --- 3. APP HEADER ---
 st.title("🧠 StudyAI — Your Personal Learning Assistant")
-st.markdown(f"**Current Language:** {st.session_state.output_lang}")
+st.markdown(f"**Current Language Global Setting:** {st.session_state.output_lang}")
 
 # --- 4. NAVIGATION TABS ---
 tab_quiz, tab_flash, tab_visual, tab_notes = st.tabs([
@@ -45,57 +36,60 @@ tab_quiz, tab_flash, tab_visual, tab_notes = st.tabs([
 
 # --- TAB 1: QUIZ GENERATOR ---
 with tab_quiz:
-    st.session_state.active_tab = "quiz"
     st.header("Quiz Generator")
     col1, col2 = st.columns([1, 2])
     with col1:
-        language_selection_ui()
+        language_ui("quiz")
+        source = st.radio("Quiz Source", ["Text Content", "YouTube Link"], key="quiz_src")
     with col2:
-        quiz_input = st.text_area("Paste text to generate a quiz:", height=200, key="quiz_input")
+        if source == "YouTube Link":
+            u_input = st.text_input("Enter YouTube URL:", key="quiz_yt_url")
+        else:
+            u_input = st.text_area("Paste text:", height=200, key="quiz_txt")
+        
         if st.button("Create Quiz ✍️"):
-            st.success(f"Generating quiz in {st.session_state.output_lang}...")
+            st.success(f"Processing {source} in {st.session_state.output_lang}...")
 
 # --- TAB 2: FLASHCARDS ---
 with tab_flash:
-    st.session_state.active_tab = "flash"
     st.header("Active Recall Flashcards")
     col1, col2 = st.columns([1, 2])
     with col1:
-        language_selection_ui()
+        language_ui("flash")
     with col2:
-        flash_input = st.text_area("Paste content for flashcards:", height=200, key="flash_input")
+        flash_input = st.text_area("Paste content for cards:", height=200, key="fc_txt")
         if st.button("Create Flashcards 🗂️"):
-            st.warning(f"Generating flashcards in {st.session_state.output_lang}...")
+            st.warning(f"Creating cards in {st.session_state.output_lang}...")
 
-# --- TAB 3: VISUAL AIDS (FLOWCHART & MIND MAP) ---
+# --- TAB 3: VISUAL AIDS ---
 with tab_visual:
-    st.session_state.active_tab = "visual"
     st.header("Visual Learning Aids")
-    
     if not MERMAID_AVAILABLE:
-        st.error("⚠️ Visualization library not found. Please add 'streamlit-mermaid' to your requirements.txt file on GitHub.")
+        st.error("⚠️ Library 'streamlit-mermaid' missing. Add it to requirements.txt on GitHub!")
     else:
         col1, col2 = st.columns([1, 2])
         with col1:
-            language_selection_ui()
-            viz_choice = st.radio("Select Type", ["Flowchart", "Mind Map"])
+            language_ui("visual")
+            viz_type = st.radio("Format", ["Flowchart", "Mind Map"])
         with col2:
-            viz_input = st.text_area("Paste steps or topics:", height=200, key="viz_input")
+            viz_input = st.text_area("Paste steps or hierarchy:", height=200, key="viz_txt")
             if st.button("Generate Visual 🎨"):
-                if viz_choice == "Flowchart":
-                    chart_code = "graph TD; A[Start] --> B[Process]; B --> C[End];"
-                else:
-                    chart_code = "mindmap\n  root((Topic))\n    Sub 1\n    Sub 2"
-                st_mermaid.st_mermaid(chart_code)
+                # Placeholder for AI-generated Mermaid code
+                code = "graph TD; A[Start] --> B[Step]; B --> C[End];" if viz_type == "Flowchart" else "mindmap\n  root((Topic))\n    Sub"
+                st_mermaid.st_mermaid(code)
 
 # --- TAB 4: NOTES GENERATOR ---
 with tab_notes:
-    st.session_state.active_tab = "notes"
     st.header("Notes Generator")
     col1, col2 = st.columns([1, 2])
     with col1:
-        language_selection_ui()
+        language_ui("notes")
+        n_source = st.radio("Notes Source", ["Paste Text", "YouTube Link"], key="notes_src")
     with col2:
-        notes_input = st.text_area("Input content:", height=200, key="notes_input")
+        if n_source == "YouTube Link":
+            n_input = st.text_input("Enter YouTube URL:", key="notes_yt_url")
+        else:
+            n_input = st.text_area("Input content:", height=200, key="notes_txt")
+            
         if st.button("Generate Notes 📄"):
-            st.info(f"Summarizing in {st.session_state.output_lang}...")
+            st.info(f"Summarizing {n_source} in {st.session_state.output_lang}...")

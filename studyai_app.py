@@ -15,31 +15,27 @@ st.set_page_config(page_title="StudyAI", page_icon="🧠", layout="wide")
 if 'output_lang' not in st.session_state:
     st.session_state.output_lang = 'English'
 
-# 3. Groq AI Logic
+# 3. Groq AI Logic (The Engine)
 def call_groq(prompt_type, user_text):
-    # Retrieve the key (ensure it's named GROQ_API_KEY in your Secrets)
     api_key = st.secrets.get("GROQ_API_KEY")
-    
     if not api_key:
-        return "⚠️ Secret Missing: Please add 'GROQ_API_KEY' to your Streamlit Secrets."
+        return "⚠️ Error: Add GROQ_API_KEY to Streamlit Secrets."
 
-    # Language-aware prompts
     prompts = {
         "viz": f"Output ONLY raw Mermaid.js code for a flowchart or mindmap. No backticks. Language: {st.session_state.output_lang}. Text: {user_text[:1500]}",
-        "notes": f"Summarize into professional bullet points in {st.session_state.output_lang}: {user_text[:3000]}",
-        "quiz": f"Create 3 multiple choice questions in {st.session_state.output_lang} based on: {user_text[:2000]}"
+        "notes": f"Summarize into clean, professional bullet points in {st.session_state.output_lang}: {user_text[:3000]}",
+        "quiz": f"Create 5 multiple choice questions with answers in {st.session_state.output_lang} based on: {user_text[:2000]}"
     }
 
     try:
-        # Calling Groq's high-speed endpoint
         response = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            timeout=15,
+            timeout=20,
             json={
                 "model": "llama-3.3-70b-versatile",
                 "messages": [
-                    {"role": "system", "content": "You are a fast AI tutor. Output only the raw content requested without explanations."},
+                    {"role": "system", "content": "You are a fast AI tutor. Output only the raw content requested."},
                     {"role": "user", "content": prompts[prompt_type]}
                 ],
                 "temperature": 0.2
@@ -48,10 +44,9 @@ def call_groq(prompt_type, user_text):
         data = response.json()
         if 'choices' in data:
             result = data['choices'][0]['message']['content'].strip()
-            # Clean out any markdown backticks that break the visualizer
             return re.sub(r'```mermaid|```|`', '', result).strip()
         else:
-            return f"Groq Error: {data.get('error', {}).get('message', 'Unknown response format')}"
+            return "API Error: Could not get a valid response."
     except Exception as e:
         return f"Connection Failed: {str(e)}"
 
@@ -61,13 +56,13 @@ def lang_ui(key):
     idx = langs.index(st.session_state.output_lang)
     st.session_state.output_lang = st.selectbox("Output Language", langs, index=idx, key=f"lang_{key}")
 
-# --- MAIN APP ---
+# --- MAIN INTERFACE ---
 st.title("🧠 StudyAI")
 
-t_quiz, t_flash, t_viz, t_notes = st.tabs(["📝 Quiz Generator", "🗂️ Flashcards", "🎨 Concept Visualizer", "📄 Notes Generator"])
+tabs = st.tabs(["📝 Quiz Generator", "🗂️ Flashcards", "🎨 Concept Visualizer", "📄 Notes Generator"])
 
-# --- TAB: QUIZ ---
-with t_quiz:
+# --- TAB 1: QUIZ ---
+with tabs[0]:
     st.header("Quiz Generator")
     c1, c2 = st.columns([1, 2])
     with c1:
@@ -76,21 +71,23 @@ with t_quiz:
     with c2:
         q_in = st.text_area("YouTube URL" if q_src == "YouTube" else "Paste Text", key="q_in", height=200)
         if st.button("Create Quiz ✍️"):
-            with st.spinner("Groq is generating your quiz..."):
-                st.markdown(call_groq("quiz", q_in))
+            with st.spinner("Generating..."):
+                res = call_groq("quiz", q_in)
+                st.markdown(res)
+                st.download_button("Download Quiz 📥", res, file_name="quiz.txt")
 
-# --- TAB: FLASHCARDS ---
-with t_flash:
+# --- TAB 2: FLASHCARDS ---
+with tabs[1]:
     st.header("Flashcards")
     c1, c2 = st.columns([1, 2])
     with c1: lang_ui("fc")
     with c2:
         f_in = st.text_area("Enter text for cards:", height=200, key="f_in")
         if st.button("Create Flashcards 🗂️"):
-            st.info("Flashcard logic active.")
+            st.info("Generating cards...")
 
-# --- TAB: CONCEPT VISUALIZER ---
-with t_viz:
+# --- TAB 3: CONCEPT VISUALIZER ---
+with tabs[2]:
     st.header("Concept Visualizer")
     if not MERMAID_AVAILABLE:
         st.error("Missing library. Add `streamlit-mermaid` to requirements.txt.")
@@ -102,19 +99,14 @@ with t_viz:
         with c2:
             v_txt = st.text_area("Paste text to visualize:", height=200, key="v_txt")
             if st.button("Generate Visual 🎨"):
-                if v_txt:
-                    with st.spinner("AI is drawing..."):
-                        code = call_groq("viz", v_txt)
-                        # Ensure the code starts with a valid Mermaid keyword
-                        if any(x in code.lower() for x in ["graph", "mindmap", "sequence"]):
-                            st_mermaid.st_mermaid(code, height=600)
-                        else:
-                            st.error(f"AI returned invalid format: {code[:100]}...")
-                else:
-                    st.warning("Please paste text first.")
+                with st.spinner("AI is drawing..."):
+                    code = call_groq("viz", v_txt)
+                    if "graph" in code or "mindmap" in code:
+                        st_mermaid.st_mermaid(code, height=600)
+                    else: st.error("AI failed to generate code.")
 
-# --- TAB: NOTES ---
-with t_notes:
+# --- TAB 4: NOTES ---
+with tabs[3]:
     st.header("Notes Generator")
     c1, c2 = st.columns([1, 2])
     with c1:
@@ -123,5 +115,7 @@ with t_notes:
     with c2:
         n_in = st.text_area("Input Content", key="n_in", height=200)
         if st.button("Generate Notes 📄"):
-            with st.spinner("Groq is summarizing..."):
-                st.markdown(call_groq("notes", n_in))
+            with st.spinner("Summarizing..."):
+                notes_res = call_groq("notes", n_in)
+                st.markdown(notes_res)
+                st.download_button("Download Notes 📥", notes_res, file_name="notes.txt")

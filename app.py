@@ -6,7 +6,7 @@ import re
 # Page config
 st.set_page_config(page_title="StudyAI", page_icon="🧠", layout="wide")
 
-# Custom CSS for better aesthetics
+# Custom CSS
 st.markdown("""
     <style>
     .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #4A90E2; color: white; }
@@ -14,7 +14,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Title & Credits
+# Title
 st.title("🧠 StudyAI — Learn Smarter")
 st.markdown("Built by **Anushka Nath** | AI-powered study tools")
 st.divider()
@@ -81,41 +81,23 @@ with tab2:
     
     with col2:
         if input_type == "📋 Paste Text":
-            content_to_process = st.text_area("Paste messy notes", height=200)
+            content_to_process = st.text_area("Paste messy notes", height=200, key="manual_notes")
             prompt_prefix = "Transform this text into structured, hierarchical study notes."
         else:
-            yt_url = st.text_input("YouTube URL", placeholder="https://www.youtube.com/watch?v=...")
+            yt_url = st.text_input("YouTube URL", placeholder="https://www.youtube.com/watch?v=...", key="yt_url_input")
             if yt_url:
                 vid_id = get_video_id(yt_url)
                 if vid_id:
                     with st.spinner("Fetching transcript..."):
                         try:
-                            # Use the class method correctly
-                            transcript_list = YouTubeTranscriptApi.list_transcripts(vid_id)
-                            
-                            try:
-                                # Try manual English first
-                                transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
-                            except:
-                                try:
-                                    # Fallback to auto-generated English
-                                    transcript = transcript_list.find_generated_transcript(['en'])
-                                except:
-                                    # Final fallback: Take the first available and translate to English
-                                    transcript = next(iter(transcript_list)).translate('en')
-                            
-                            data = transcript.fetch()
+                            # FIXED: Using the most compatible method to avoid the 'attribute' error
+                            # We provide a list of common language codes to try
+                            data = YouTubeTranscriptApi.get_transcript(vid_id, languages=['en', 'en-US', 'en-GB'])
                             content_to_process = " ".join([t['text'] for t in data])
                             st.info(f"✅ Transcript loaded ({len(content_to_process.split())} words)")
                         except Exception as e:
-                            # Final bulletproof fallback for older versions
-                            try:
-                                data = YouTubeTranscriptApi.get_transcript(vid_id)
-                                content_to_process = " ".join([t['text'] for t in data])
-                                st.info(f"✅ Transcript loaded via fallback ({len(content_to_process.split())} words)")
-                            except:
-                                st.error(f"❌ Transcript Error: {str(e)}")
-                                st.info("This video might not have captions enabled.")
+                            st.error(f"❌ Transcript Error: {str(e)}")
+                            st.info("Tip: Ensure the video has English captions (CC) enabled.")
                 else:
                     st.error("❌ Invalid URL.")
             prompt_prefix = "Summarize this transcript into professional study notes."
@@ -133,14 +115,14 @@ with tab2:
 # ── TAB 3: FLASHCARDS ──
 with tab3:
     st.subheader("Active Recall Flashcards")
-    fc_input = st.text_area("Paste text to create flashcards", height=200, placeholder="Paste a paragraph or chapter summary...")
+    fc_input = st.text_area("Paste text to create flashcards", height=200, placeholder="Paste text here...", key="fc_input")
     
-    if st.button("Create Flashcards 🗂️"):
+    if st.button("Create Flashcards 🗂️", key="fc_btn"):
         if not fc_input:
             st.warning("Input required.")
         else:
             with st.spinner("Generating cards..."):
-                prompt = f"Create 5-10 flashcards from this text. Format each card as:\nFront: [Question]\nBack: [Answer]\n\nText:\n{fc_input}"
+                prompt = f"Create 5-10 flashcards from this text. Format: Front: [Question] Back: [Answer].\n\nText:\n{fc_input}"
                 result = generate(prompt)
                 st.success("Flashcards Generated!")
                 st.markdown(result)

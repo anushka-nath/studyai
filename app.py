@@ -1,12 +1,13 @@
 import streamlit as st
 from groq import Groq
 import youtube_transcript_api
+from youtube_transcript_api import YouTubeTranscriptApi
 import re
 
 # Page config
 st.set_page_config(page_title="StudyAI", page_icon="🧠", layout="wide")
 
-# Custom CSS
+# Custom CSS for better aesthetics
 st.markdown("""
     <style>
     .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #4A90E2; color: white; }
@@ -14,7 +15,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Title
+# Title & Credits
 st.title("🧠 StudyAI — Learn Smarter")
 st.markdown("Built by **Anushka Nath** | AI-powered study tools")
 st.divider()
@@ -70,4 +71,64 @@ with tab1:
                     st.error(f"API Error: {str(e)}")
 
 # ── TAB 2: NOTES GENERATOR ──
-with tab
+with tab2:
+    st.subheader("Generate Clean Notes")
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        input_type = st.radio("Input Source", ["📋 Paste Text", "🎥 YouTube Link"])
+    
+    content_to_process = ""
+    
+    with col2:
+        if input_type == "📋 Paste Text":
+            content_to_process = st.text_area("Paste messy notes", height=200, key="manual_notes")
+            prompt_prefix = "Transform this text into structured, hierarchical study notes."
+        else:
+            yt_url = st.text_input("YouTube URL", placeholder="https://www.youtube.com/watch?v=...", key="yt_url_input")
+            if yt_url:
+                vid_id = get_video_id(yt_url)
+                if vid_id:
+                    with st.spinner("Fetching transcript..."):
+                        try:
+                            # Using the most direct access method to the API
+                            data = YouTubeTranscriptApi.get_transcript(vid_id, languages=['en', 'en-US'])
+                            content_to_process = " ".join([t['text'] for t in data])
+                            st.info(f"✅ Transcript loaded ({len(content_to_process.split())} words)")
+                        except Exception as e:
+                            st.error(f"❌ YouTube Fetch Failed: {str(e)}")
+                else:
+                    st.error("❌ Invalid URL.")
+            prompt_prefix = "Summarize this transcript into professional study notes."
+
+    if st.button("Generate Notes 📄", key="notes_btn"):
+        if not content_to_process:
+            st.warning("Please provide content.")
+        else:
+            with st.spinner("Organizing notes..."):
+                try:
+                    prompt = f"{prompt_prefix}\nUse Markdown, include a Summary, Key Takeaways, and a Glossary.\n\nContent:\n{content_to_process}"
+                    result = generate(prompt)
+                    st.markdown(result)
+                    st.download_button("Download Notes (.txt)", result, file_name="study_notes.txt")
+                except Exception as e:
+                    st.error(f"Generation Error: {str(e)}")
+
+# ── TAB 3: FLASHCARDS ──
+with tab3:
+    st.subheader("Active Recall Flashcards")
+    fc_input = st.text_area("Paste text to create flashcards", height=200, placeholder="Paste text here...", key="fc_input")
+    
+    if st.button("Create Flashcards 🗂️", key="fc_btn"):
+        if not fc_input:
+            st.warning("Input required.")
+        else:
+            with st.spinner("Generating cards..."):
+                try:
+                    prompt = f"Create 5-10 flashcards from this text. Format: Front: [Question] Back: [Answer].\n\nText:\n{fc_input}"
+                    result = generate(prompt)
+                    st.success("Flashcards Generated!")
+                    st.markdown(result)
+                    st.download_button("Download Flashcards", result, file_name="flashcards.txt")
+                except Exception as e:
+                    st.error(f"Generation Error: {str(e)}")

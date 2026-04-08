@@ -1,2 +1,15 @@
-# studyai
-AI- powered study tool that generates quizzes and notes from text and youtube videos
+# 🧠 StudyAI — Learn Smarter
+
+AI-powered study tool built with Python and Streamlit.
+
+## Features
+- 📝 Generate MCQ quizzes from your notes
+- 📄 Generate clean study notes from text
+- 🎥 Auto-fetch YouTube transcripts and convert to notes
+
+## Tech Stack
+- Python
+- Streamlit
+- Groq AI (LLaMA 3)
+- YouTube Transcript API
+

@@ -1,6 +1,6 @@
 import streamlit as st
 from groq import Groq
-from youtube_transcript_api import YouTubeTranscriptApi as yta  # Renamed for direct access
+import youtube_transcript_api
 import re
 
 # Page config
@@ -70,60 +70,4 @@ with tab1:
                     st.error(f"API Error: {str(e)}")
 
 # ── TAB 2: NOTES GENERATOR ──
-with tab2:
-    st.subheader("Generate Clean Notes")
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        input_type = st.radio("Input Source", ["📋 Paste Text", "🎥 YouTube Link"])
-    
-    content_to_process = ""
-    
-    with col2:
-        if input_type == "📋 Paste Text":
-            content_to_process = st.text_area("Paste messy notes", height=200, key="manual_notes")
-            prompt_prefix = "Transform this text into structured, hierarchical study notes."
-        else:
-            yt_url = st.text_input("YouTube URL", placeholder="https://www.youtube.com/watch?v=...", key="yt_url_input")
-            if yt_url:
-                vid_id = get_video_id(yt_url)
-                if vid_id:
-                    with st.spinner("Fetching transcript..."):
-                        try:
-                            # NEW METHOD: Using the renamed library alias to call the function directly
-                            # This bypasses the 'attribute' error on the class object
-                            transcript_data = yta.get_transcript(vid_id)
-                            content_to_process = " ".join([t['text'] for t in transcript_data])
-                            st.info(f"✅ Transcript loaded ({len(content_to_process.split())} words)")
-                        except Exception as e:
-                            st.error(f"❌ YouTube Fetch Failed: {str(e)}")
-                            st.info("Ensure the video has CC enabled.")
-                else:
-                    st.error("❌ Invalid URL.")
-            prompt_prefix = "Summarize this transcript into professional study notes."
-
-    if st.button("Generate Notes 📄", key="notes_btn"):
-        if not content_to_process:
-            st.warning("Please provide content.")
-        else:
-            with st.spinner("Organizing notes..."):
-                prompt = f"{prompt_prefix}\nUse Markdown, include a Summary, Key Takeaways, and a Glossary.\n\nContent:\n{content_to_process}"
-                result = generate(prompt)
-                st.markdown(result)
-                st.download_button("Download Notes (.txt)", result, file_name="study_notes.txt")
-
-# ── TAB 3: FLASHCARDS ──
-with tab3:
-    st.subheader("Active Recall Flashcards")
-    fc_input = st.text_area("Paste text to create flashcards", height=200, placeholder="Paste text here...", key="fc_input")
-    
-    if st.button("Create Flashcards 🗂️", key="fc_btn"):
-        if not fc_input:
-            st.warning("Input required.")
-        else:
-            with st.spinner("Generating cards..."):
-                prompt = f"Create 5-10 flashcards from this text. Format: Front: [Question] Back: [Answer].\n\nText:\n{fc_input}"
-                result = generate(prompt)
-                st.success("Flashcards Generated!")
-                st.markdown(result)
-                st.download_button("Download Flashcards", result, file_name="flashcards.txt")
+with tab

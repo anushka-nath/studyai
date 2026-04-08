@@ -58,4 +58,37 @@ def lang_ui(key):
     st.session_state.output_lang = choice
 
 # --- MAIN INTERFACE ---
-st.title("🧠
+st.title("🧠 StudyAI")
+
+tabs = st.tabs(["📝 Quiz Generator", "🗂️ Flashcards", "🎨 Concept Visualizer", "📄 Notes Generator"])
+
+# --- TAB 1: QUIZ ---
+with tabs[0]:
+    st.header("Quiz Generator")
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        lang_ui("quiz")
+        q_src = st.radio("Source Type", ["Text", "YouTube Link"], key="q_src")
+        q_count = st.slider("Number of Questions", 3, 15, 5, key="q_slider")
+    with c2:
+        if q_src == "YouTube Link":
+            q_in = st.text_input("Paste YouTube URL", key="q_yt")
+        else:
+            q_in = st.text_area("Paste Text", key="q_txt", height=200)
+            
+        if st.button("Create Quiz ✍️"):
+            if q_in:
+                with st.spinner("Generating Quiz..."):
+                    res = call_groq("quiz", q_in, count=q_count)
+                    st.markdown(res)
+                    st.download_button("Download Quiz 📥", res, file_name="quiz.txt")
+            else:
+                st.warning("Please provide content first.")
+
+# --- TAB 2: FLASHCARDS ---
+with tabs[1]:
+    st.header("Flashcards")
+    c1, c2 = st.columns([1, 2])
+    with c1: 
+        lang_ui("fc")
+        f_count = st.slider("Number of Cards", 3

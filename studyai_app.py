@@ -12,18 +12,25 @@ except ImportError:
 # 2. Page Configuration
 st.set_page_config(page_title="StudyAI", page_icon="🧠", layout="wide")
 
-# Persistent state
 if 'output_lang' not in st.session_state:
     st.session_state.output_lang = 'English'
 
-# --- 3. THE ENGINE: GROQ API ---
+# --- THE FIX: Visualizer Cleaner ---
+def clean_mermaid_logic(text):
+    # Remove markdown code blocks
+    text = re.sub(r'```mermaid|```|`|mermaid', '', text, flags=re.IGNORECASE).strip()
+    # Remove common characters that break Mermaid syntax inside labels
+    text = text.replace("(", " ").replace(")", " ").replace(":", "-").replace("#", " ")
+    return text
+
+# 3. THE ENGINE: GROQ API
 def call_groq(prompt_type, user_text, count=5, v_style="flowchart"):
     api_key = st.secrets.get("GROQ_API_KEY")
     if not api_key:
         return "⚠️ Error: GROQ_API_KEY not found in Secrets."
 
     prompts = {
-        "viz": f"Output ONLY raw Mermaid.js code for a {v_style}. Use node['text'] format. No special chars. Language: {st.session_state.output_lang}. Text: {user_text[:1200]}",
+        "viz": f"Output ONLY raw Mermaid.js {v_style} code. Rules: 1. Use 'graph TD' for flowchart. 2. Use node1['Text'] format. 3. No conversational text. Language: {st.session_state.output_lang}. Text: {user_text[:1000]}",
         "notes": f"Summarize into professional bullet points in {st.session_state.output_lang}: {user_text[:3000]}",
         "quiz": f"Create EXACTLY {count} multiple choice questions with answers in {st.session_state.output_lang} based on: {user_text[:2000]}",
         "flash": f"Create EXACTLY {count} Flashcards. Format:\n**Card X**\nFront: [Q]\nBack: [A]\n\nLanguage: {st.session_state.output_lang}. Text: {user_text[:1500]}"
@@ -45,7 +52,7 @@ def call_groq(prompt_type, user_text, count=5, v_style="flowchart"):
         if 'choices' in data:
             res = data['choices'][0]['message']['content'].strip()
             if prompt_type == "viz":
-                return re.sub(r'```mermaid|```|`|mermaid', '', res, flags=re.IGNORECASE).strip()
+                return clean_mermaid_logic(res)
             return res
         return "Error: API returned empty response."
     except Exception as e:
@@ -78,8 +85,6 @@ with tabs[0]:
                     res = call_groq("quiz", q_in, count=q_count)
                     st.markdown(res)
                     st.download_button("Download Quiz 📥", res, file_name="quiz.txt")
-            else:
-                st.warning("Please enter content first.")
 
 # --- TAB 2: FLASHCARDS ---
 with tabs[1]:
@@ -96,14 +101,12 @@ with tabs[1]:
                     f_res = call_groq("flash", f_in, count=f_count)
                     st.markdown(f_res)
                     st.download_button("Download Flashcards 📥", f_res, file_name="cards.txt")
-            else:
-                st.warning("Please paste text.")
 
-# --- TAB 3: CONCEPT VISUALIZER ---
+# --- TAB 3: CONCEPT VISUALIZER (FIXED) ---
 with tabs[2]:
     st.header("Concept Visualizer")
     if not MERMAID_AVAILABLE:
-        st.error("Missing streamlit-mermaid library.")
+        st.error("Missing library: streamlit-mermaid")
     else:
         c1, c2 = st.columns([1, 2])
         with c1:
@@ -113,15 +116,16 @@ with tabs[2]:
             v_in = st.text_area("Paste text to visualize:", height=200, key="v_tx_in")
             if st.button("Generate Visual 🎨"):
                 if v_in:
-                    with st.spinner("Drawing..."):
+                    with st.spinner("Drawing Diagram..."):
                         code = call_groq("viz", v_in, v_style=v_style.lower().replace(" ", ""))
+                        # Final check to ensure code has a valid starting point
                         if "graph" in code or "mindmap" in code:
                             st.success("Visual Ready!")
                             st_mermaid.st_mermaid(code, height=500)
                         else:
-                            st.error("Failed to render diagram code.")
+                            st.error("AI returned text instead of a diagram. Try a smaller text snippet.")
                 else:
-                    st.warning("Please paste text.")
+                    st.warning("Please paste text first.")
 
 # --- TAB 4: NOTES ---
 with tabs[3]:
@@ -142,5 +146,3 @@ with tabs[3]:
                     n_res = call_groq("notes", n_in)
                     st.markdown(n_res)
                     st.download_button("Download Notes 📥", n_res, file_name="notes.txt")
-            else:
-                st.warning("Please enter content.")

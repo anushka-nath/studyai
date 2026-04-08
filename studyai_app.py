@@ -15,11 +15,9 @@ st.set_page_config(page_title="StudyAI", page_icon="🧠", layout="wide")
 if 'output_lang' not in st.session_state:
     st.session_state.output_lang = 'English'
 
-# --- THE FIX: Visualizer Cleaner ---
+# --- THE FIX: Cleaner for Mermaid Syntax ---
 def clean_mermaid_logic(text):
-    # Remove markdown code blocks
     text = re.sub(r'```mermaid|```|`|mermaid', '', text, flags=re.IGNORECASE).strip()
-    # Remove common characters that break Mermaid syntax inside labels
     text = text.replace("(", " ").replace(")", " ").replace(":", "-").replace("#", " ")
     return text
 
@@ -29,8 +27,13 @@ def call_groq(prompt_type, user_text, count=5, v_style="flowchart"):
     if not api_key:
         return "⚠️ Error: GROQ_API_KEY not found in Secrets."
 
+    # Logic to handle Mind Map vs Flowchart prompt instructions
+    viz_instruction = "Use 'graph TD' and node1['text'] --> node2['text']"
+    if v_style == "mindmap":
+        viz_instruction = "Use 'mindmap' syntax. Start with 'mindmap', then use indentation for levels. Example: mindmap\n  root\n    child1\n    child2"
+
     prompts = {
-        "viz": f"Output ONLY raw Mermaid.js {v_style} code. Rules: 1. Use 'graph TD' for flowchart. 2. Use node1['Text'] format. 3. No conversational text. Language: {st.session_state.output_lang}. Text: {user_text[:1000]}",
+        "viz": f"Output ONLY raw Mermaid.js code. Style: {v_style}. Instruction: {viz_instruction}. Language: {st.session_state.output_lang}. Text: {user_text[:1000]}",
         "notes": f"Summarize into professional bullet points in {st.session_state.output_lang}: {user_text[:3000]}",
         "quiz": f"Create EXACTLY {count} multiple choice questions with answers in {st.session_state.output_lang} based on: {user_text[:2000]}",
         "flash": f"Create EXACTLY {count} Flashcards. Format:\n**Card X**\nFront: [Q]\nBack: [A]\n\nLanguage: {st.session_state.output_lang}. Text: {user_text[:1500]}"
@@ -102,7 +105,7 @@ with tabs[1]:
                     st.markdown(f_res)
                     st.download_button("Download Flashcards 📥", f_res, file_name="cards.txt")
 
-# --- TAB 3: CONCEPT VISUALIZER (FIXED) ---
+# --- TAB 3: CONCEPT VISUALIZER (FIXED MIND MAP) ---
 with tabs[2]:
     st.header("Concept Visualizer")
     if not MERMAID_AVAILABLE:
@@ -117,13 +120,15 @@ with tabs[2]:
             if st.button("Generate Visual 🎨"):
                 if v_in:
                     with st.spinner("Drawing Diagram..."):
-                        code = call_groq("viz", v_in, v_style=v_style.lower().replace(" ", ""))
-                        # Final check to ensure code has a valid starting point
+                        # Ensure internal style name matches Mermaid expected keywords
+                        internal_style = "mindmap" if v_style == "Mind Map" else "flowchart"
+                        code = call_groq("viz", v_in, v_style=internal_style)
+                        
                         if "graph" in code or "mindmap" in code:
                             st.success("Visual Ready!")
                             st_mermaid.st_mermaid(code, height=500)
                         else:
-                            st.error("AI returned text instead of a diagram. Try a smaller text snippet.")
+                            st.error("AI failed to generate diagram code. Try a shorter text snippet.")
                 else:
                     st.warning("Please paste text first.")
 

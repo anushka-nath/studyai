@@ -12,6 +12,7 @@ except ImportError:
 # 2. Page Configuration
 st.set_page_config(page_title="StudyAI", page_icon="🧠", layout="wide")
 
+# Persistent state
 if 'output_lang' not in st.session_state:
     st.session_state.output_lang = 'English'
 
@@ -55,14 +56,10 @@ st.title("🧠 StudyAI")
 
 tabs = st.tabs(["📝 Quiz Generator", "🗂️ Flashcards", "🎨 Concept Visualizer", "📄 Notes Generator"])
 
+langs = ["English", "Spanish", "French", "German", "Hindi", "Bengali"]
+
 # --- TAB 1: QUIZ ---
 with tabs[0]:
     st.header("Quiz Generator")
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        langs = ["English", "Spanish", "French", "German", "Hindi", "Bengali"]
-        st.session_state.output_lang = st.selectbox("Output Language", langs, key="lang_quiz")
-        q_src = st.radio("Source Type", ["Text", "YouTube Link"], key="q_src_radio")
-        q_count = st.slider("Number of Questions", 3, 15, 5, key="q_slider_val")
-    with col2:
-        q_input = st.text_input("Paste YouTube URL", key="q
+    c1, c2 = st.columns([1, 2])
+    with c1:

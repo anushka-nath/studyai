@@ -1,5 +1,6 @@
 import streamlit as st
 from groq import Groq
+import youtube_transcript_api
 from youtube_transcript_api import YouTubeTranscriptApi
 import re
 
@@ -89,25 +90,20 @@ with tab2:
             content_to_process = st.text_area("Paste messy notes", height=200, key="manual_notes")
             prompt_prefix = "Transform this text into structured, hierarchical study notes."
         else:
-            # FIX APPLIED HERE: Changed st.text_ to st.text_input
             yt_url = st.text_input("YouTube URL", placeholder="https://www.youtube.com/watch?v=...", key="yt_url_input")
             if yt_url:
                 vid_id = get_video_id(yt_url)
                 if vid_id:
                     with st.spinner("Fetching transcript..."):
                         try:
-                            # Robust transcript fetching
-                            transcript_list = YouTubeTranscriptApi.list_transcripts(vid_id)
-                            try:
-                                transcript = transcript_list.find_transcript(['en', 'en-US'])
-                            except:
-                                transcript = transcript_list.find_generated_transcript(['en'])
-                            
-                            data = transcript.fetch()
+                            # Using the most compatible direct method
+                            # This bypasses .list_transcripts and goes straight for the data
+                            data = YouTubeTranscriptApi.get_transcript(vid_id)
                             content_to_process = " ".join([t['text'] for t in data])
                             st.info(f"✅ Transcript loaded ({len(content_to_process.split())} words)")
                         except Exception as e:
                             st.error(f"❌ YouTube Fetch Failed: {str(e)}")
+                            st.info("Tip: If this persists, try a different video or check if subtitles are enabled on YouTube.")
                 else:
                     st.error("❌ Invalid URL.")
             prompt_prefix = "Summarize this transcript into professional study notes."
@@ -143,3 +139,4 @@ with tab3:
                     st.download_button("Download Flashcards", result, file_name="flashcards.txt")
                 except Exception as e:
                     st.error(f"Generation Error: {str(e)}")
+                    

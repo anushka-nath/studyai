@@ -58,15 +58,4 @@ def lang_ui(key):
     st.session_state.output_lang = choice
 
 # --- MAIN INTERFACE ---
-st.title("🧠 StudyAI")
-
-tabs = st.tabs(["📝 Quiz Generator", "🗂️ Flashcards", "🎨 Concept Visualizer", "📄 Notes Generator"])
-
-# --- TAB 1: QUIZ ---
-with tabs[0]:
-    st.header("Quiz Generator")
-    c1, c2 = st.columns([1, 2])
-    with c1:
-        lang_ui("quiz")
-        q_src = st.radio("Source Type", ["Text", "YouTube
-        
+st.title("🧠

@@ -71,11 +71,7 @@ with tabs[0]:
         q_src = st.radio("Source Type", ["Text", "YouTube Link"], key="q_src")
         q_count = st.slider("Number of Questions", 3, 15, 5, key="q_slider")
     with c2:
-        if q_src == "YouTube Link":
-            q_in = st.text_input("Paste YouTube URL", key="q_yt")
-        else:
-            q_in = st.text_area("Paste Text", key="q_txt", height=200)
-            
+        q_in = st.text_input("Paste YouTube URL", key="q_yt") if q_src == "YouTube Link" else st.text_area("Paste Text", key="q_txt", height=200)
         if st.button("Create Quiz ✍️"):
             if q_in:
                 with st.spinner("Generating Quiz..."):
@@ -83,16 +79,9 @@ with tabs[0]:
                     st.markdown(res)
                     st.download_button("Download Quiz 📥", res, file_name="quiz.txt")
             else:
-                st.warning("Please provide content first.")
+                st.warning("Please provide content.")
 
 # --- TAB 2: FLASHCARDS ---
 with tabs[1]:
     st.header("Flashcards")
     c1, c2 = st.columns([1, 2])
-    with c1: 
-        lang_ui("fc")
-        f_count = st.slider("Number of Cards", 3, 15, 5, key="f_slider")
-    with c2:
-        f_in = st.text_area("Paste text for cards:", height=200, key="f_in")
-        if st.button("Create Flashcards 🗂️"):
-            if f_in:

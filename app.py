@@ -1,6 +1,6 @@
 import streamlit as st
 from groq import Groq
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api import YouTubeTranscriptApi as yta  # Renamed for direct access
 import re
 
 # Page config
@@ -90,14 +90,14 @@ with tab2:
                 if vid_id:
                     with st.spinner("Fetching transcript..."):
                         try:
-                            # BYPASS METHOD: Use get_transcript directly with language fallback
-                            # This avoids the 'list_transcripts' attribute error entirely
-                            transcript_data = YouTubeTranscriptApi.get_transcript(vid_id, languages=['en', 'en-US'])
+                            # NEW METHOD: Using the renamed library alias to call the function directly
+                            # This bypasses the 'attribute' error on the class object
+                            transcript_data = yta.get_transcript(vid_id)
                             content_to_process = " ".join([t['text'] for t in transcript_data])
                             st.info(f"✅ Transcript loaded ({len(content_to_process.split())} words)")
                         except Exception as e:
                             st.error(f"❌ YouTube Fetch Failed: {str(e)}")
-                            st.info("Check if the video has CC enabled. If it's a very new video, transcripts might not be ready.")
+                            st.info("Ensure the video has CC enabled.")
                 else:
                     st.error("❌ Invalid URL.")
             prompt_prefix = "Summarize this transcript into professional study notes."

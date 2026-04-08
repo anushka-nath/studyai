@@ -91,4 +91,8 @@ with tabs[1]:
     c1, c2 = st.columns([1, 2])
     with c1: 
         lang_ui("fc")
-        f_count = st.slider("Number of Cards", 3
+        f_count = st.slider("Number of Cards", 3, 15, 5, key="f_slider")
+    with c2:
+        f_in = st.text_area("Paste text for cards:", height=200, key="f_in")
+        if st.button("Create Flashcards 🗂️"):
+            if f_in:

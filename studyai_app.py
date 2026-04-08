@@ -9,111 +9,119 @@ try:
 except ImportError:
     MERMAID_AVAILABLE = False
 
-# 2. Page Config
+# 2. Page Configuration
 st.set_page_config(page_title="StudyAI", page_icon="🧠", layout="wide")
 
-# Sync language across tabs
 if 'output_lang' not in st.session_state:
     st.session_state.output_lang = 'English'
 
-# 3. Optimized AI Function (Grok)
-def call_grok(prompt_type, user_text):
-    api_key = st.secrets.get("GROK_API_KEY")
-    if not api_key:
-        return "Error: Configure GROK_API_KEY in Secrets."
+# 3. Groq AI Logic
+def call_groq(prompt_type, user_text):
+    # Retrieve the key (ensure it's named GROQ_API_KEY in your Secrets)
+    api_key = st.secrets.get("GROQ_API_KEY")
     
-    # Specific instructions based on what we are generating
+    if not api_key:
+        return "⚠️ Secret Missing: Please add 'GROQ_API_KEY' to your Streamlit Secrets."
+
+    # Language-aware prompts
     prompts = {
-        "viz": f"Convert to raw Mermaid.js code. Use 'graph TD' for flowchart or 'mindmap'. No backticks. No talk. Language: {st.session_state.output_lang}. Text: {user_text[:1000]}",
-        "notes": f"Summarize these notes into clean bullet points in {st.session_state.output_lang}: {user_text[:2000]}",
-        "quiz": f"Create 3 multiple choice questions in {st.session_state.output_lang} based on: {user_text[:1500]}"
+        "viz": f"Output ONLY raw Mermaid.js code for a flowchart or mindmap. No backticks. Language: {st.session_state.output_lang}. Text: {user_text[:1500]}",
+        "notes": f"Summarize into professional bullet points in {st.session_state.output_lang}: {user_text[:3000]}",
+        "quiz": f"Create 3 multiple choice questions in {st.session_state.output_lang} based on: {user_text[:2000]}"
     }
 
     try:
+        # Calling Groq's high-speed endpoint
         response = requests.post(
-            "https://api.x.ai/v1/chat/completions",
+            "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            timeout=15, # Prevents the "infinite loading" feel
+            timeout=15,
             json={
-                "model": "grok-beta",
-                "messages": [{"role": "system", "content": "You are an AI study assistant. Output ONLY the requested content."},
-                             {"role": "user", "content": prompts[prompt_type]}],
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": "You are a fast AI tutor. Output only the raw content requested without explanations."},
+                    {"role": "user", "content": prompts[prompt_type]}
+                ],
                 "temperature": 0.2
             }
         )
-        result = response.json()['choices'][0]['message']['content'].strip()
-        # Remove any markdown code blocks that break the visualizer
-        return re.sub(r'```mermaid|```', '', result).strip()
+        data = response.json()
+        if 'choices' in data:
+            result = data['choices'][0]['message']['content'].strip()
+            # Clean out any markdown backticks that break the visualizer
+            return re.sub(r'```mermaid|```|`', '', result).strip()
+        else:
+            return f"Groq Error: {data.get('error', {}).get('message', 'Unknown response format')}"
     except Exception as e:
-        return f"Error connecting to AI: {str(e)}"
+        return f"Connection Failed: {str(e)}"
 
-# 4. Global Language UI
-def show_lang_selector(key):
+# 4. Helper for Language Sync
+def lang_ui(key):
     langs = ["English", "Spanish", "French", "German", "Hindi", "Bengali"]
     idx = langs.index(st.session_state.output_lang)
     st.session_state.output_lang = st.selectbox("Output Language", langs, index=idx, key=f"lang_{key}")
 
-# --- APP LAYOUT ---
+# --- MAIN APP ---
 st.title("🧠 StudyAI")
 
-tabs = st.tabs(["📝 Quiz Generator", "🗂️ Flashcards", "🎨 Concept Visualizer", "📄 Notes Generator"])
+t_quiz, t_flash, t_viz, t_notes = st.tabs(["📝 Quiz Generator", "🗂️ Flashcards", "🎨 Concept Visualizer", "📄 Notes Generator"])
 
 # --- TAB: QUIZ ---
-with tabs[0]:
+with t_quiz:
     st.header("Quiz Generator")
     c1, c2 = st.columns([1, 2])
     with c1:
-        show_lang_selector("quiz")
+        lang_ui("quiz")
         q_src = st.radio("Source", ["Text", "YouTube"], key="q_src")
     with c2:
-        q_in = st.text_input("YouTube URL" if q_src == "YouTube" else "Paste Text", key="q_in")
+        q_in = st.text_area("YouTube URL" if q_src == "YouTube" else "Paste Text", key="q_in", height=200)
         if st.button("Create Quiz ✍️"):
-            with st.spinner("Generating..."):
-                st.write(call_grok("quiz", q_in))
+            with st.spinner("Groq is generating your quiz..."):
+                st.markdown(call_groq("quiz", q_in))
 
 # --- TAB: FLASHCARDS ---
-with tabs[1]:
+with t_flash:
     st.header("Flashcards")
     c1, c2 = st.columns([1, 2])
-    with c1: show_lang_selector("fc")
+    with c1: lang_ui("fc")
     with c2:
-        f_in = st.text_area("Paste content:", height=200, key="f_in")
+        f_in = st.text_area("Enter text for cards:", height=200, key="f_in")
         if st.button("Create Flashcards 🗂️"):
-            st.info("Flashcard logic pending API connection...")
+            st.info("Flashcard logic active.")
 
 # --- TAB: CONCEPT VISUALIZER ---
-with tabs[2]:
+with t_viz:
     st.header("Concept Visualizer")
     if not MERMAID_AVAILABLE:
-        st.error("Add `streamlit-mermaid` to requirements.txt")
+        st.error("Missing library. Add `streamlit-mermaid` to requirements.txt.")
     else:
         c1, c2 = st.columns([1, 2])
         with c1:
-            show_lang_selector("viz")
+            lang_ui("viz")
             v_style = st.radio("Style", ["Flowchart", "Mind Map"], key="v_style")
         with c2:
             v_txt = st.text_area("Paste text to visualize:", height=200, key="v_txt")
             if st.button("Generate Visual 🎨"):
                 if v_txt:
                     with st.spinner("AI is drawing..."):
-                        code = call_grok("viz", v_txt)
-                        # Fix: check if code is actually Mermaid
-                        if "graph" in code or "mindmap" in code:
-                            st_mermaid.st_mermaid(code, height=500)
+                        code = call_groq("viz", v_txt)
+                        # Ensure the code starts with a valid Mermaid keyword
+                        if any(x in code.lower() for x in ["graph", "mindmap", "sequence"]):
+                            st_mermaid.st_mermaid(code, height=600)
                         else:
-                            st.error("AI returned text instead of code. Try again.")
+                            st.error(f"AI returned invalid format: {code[:100]}...")
                 else:
-                    st.warning("Please enter text.")
+                    st.warning("Please paste text first.")
 
 # --- TAB: NOTES ---
-with tabs[3]:
+with t_notes:
     st.header("Notes Generator")
     c1, c2 = st.columns([1, 2])
     with c1:
-        show_lang_selector("notes")
+        lang_ui("notes")
         n_src = st.radio("Source", ["Text", "YouTube"], key="n_src")
     with c2:
-        n_in = st.text_area("Input Source", key="n_in", height=200)
+        n_in = st.text_area("Input Content", key="n_in", height=200)
         if st.button("Generate Notes 📄"):
-            with st.spinner("Summarizing..."):
-                st.markdown(call_grok("notes", n_in))
+            with st.spinner("Groq is summarizing..."):
+                st.markdown(call_groq("notes", n_in))

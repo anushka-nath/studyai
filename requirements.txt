@@ -1,1 +1,3 @@
-streamlit groq youtubetranscript-api
+streamlit
+groq
+youtube-transcript-api

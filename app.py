@@ -90,14 +90,14 @@ with tab2:
                 if vid_id:
                     with st.spinner("Fetching transcript..."):
                         try:
-                            # FIXED: Using the most compatible method to avoid the 'attribute' error
-                            # We provide a list of common language codes to try
-                            data = YouTubeTranscriptApi.get_transcript(vid_id, languages=['en', 'en-US', 'en-GB'])
-                            content_to_process = " ".join([t['text'] for t in data])
+                            # BYPASS METHOD: Use get_transcript directly with language fallback
+                            # This avoids the 'list_transcripts' attribute error entirely
+                            transcript_data = YouTubeTranscriptApi.get_transcript(vid_id, languages=['en', 'en-US'])
+                            content_to_process = " ".join([t['text'] for t in transcript_data])
                             st.info(f"✅ Transcript loaded ({len(content_to_process.split())} words)")
                         except Exception as e:
-                            st.error(f"❌ Transcript Error: {str(e)}")
-                            st.info("Tip: Ensure the video has English captions (CC) enabled.")
+                            st.error(f"❌ YouTube Fetch Failed: {str(e)}")
+                            st.info("Check if the video has CC enabled. If it's a very new video, transcripts might not be ready.")
                 else:
                     st.error("❌ Invalid URL.")
             prompt_prefix = "Summarize this transcript into professional study notes."

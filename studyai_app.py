@@ -40,11 +40,13 @@ def call_groq(prompt_type, user_text, count=5, v_style="flowchart"):
                 "temperature": 0.2
             }
         )
-        res = response.json()['choices'][0]['message']['content'].strip()
-        if prompt_type == "viz":
-            # Strip markdown and conversations for Mermaid
-            return re.sub(r'```mermaid|```|`|mermaid', '', res, flags=re.IGNORECASE).strip()
-        return res
+        data = response.json()
+        if 'choices' in data:
+            res = data['choices'][0]['message']['content'].strip()
+            if prompt_type == "viz":
+                return re.sub(r'```mermaid|```|`|mermaid', '', res, flags=re.IGNORECASE).strip()
+            return res
+        return "Error: API returned empty response."
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -52,37 +54,19 @@ def call_groq(prompt_type, user_text, count=5, v_style="flowchart"):
 def lang_ui(key):
     langs = ["English", "Spanish", "French", "German", "Hindi", "Bengali"]
     idx = langs.index(st.session_state.output_lang)
-    st.session_state.output_lang = st.selectbox("Output Language", langs, index=idx, key=f"lang_{key}")
+    choice = st.selectbox("Output Language", langs, index=idx, key=f"lang_{key}")
+    st.session_state.output_lang = choice
 
 # --- MAIN INTERFACE ---
 st.title("🧠 StudyAI")
 
 tabs = st.tabs(["📝 Quiz Generator", "🗂️ Flashcards", "🎨 Concept Visualizer", "📄 Notes Generator"])
 
-# --- TAB 1: QUIZ (RESTORING FEATURES) ---
+# --- TAB 1: QUIZ ---
 with tabs[0]:
     st.header("Quiz Generator")
     c1, c2 = st.columns([1, 2])
     with c1:
         lang_ui("quiz")
-        q_src = st.radio("Source Type", ["Text", "YouTube Link"], key="q_src")
-        # RESTORED FEATURE: No. of Questions
-        q_count = st.slider("Number of Questions", 3, 15, 5, key="q_slider")
-    with c2:
-        q_in = st.text_input("Paste YouTube URL", key="q_yt") if q_src == "YouTube Link" else st.text_area("Paste Text", key="q_txt", height=200)
-        if st.button("Create Quiz ✍️"):
-            with st.spinner("Generating Quiz..."):
-                res = call_groq("quiz", q_in, count=q_count)
-                st.markdown(res)
-                st.download_button("Download Quiz 📥", res, file_name="quiz.txt")
-
-# --- TAB 2: FLASHCARDS (RESTORING FEATURES) ---
-with tabs[1]:
-    st.header("Flashcards")
-    c1, c2 = st.columns([1, 2])
-    with c1: 
-        lang_ui("fc")
-        f_count = st.slider("Number of Cards", 3, 15, 5, key="f_slider")
-    with c2:
-        f_in = st.text_area("Paste text for cards:", height=200, key="f_in")
-        if
+        q_src = st.radio("Source Type", ["Text", "YouTube
+        

@@ -50,13 +50,6 @@ def call_groq(prompt_type, user_text, count=5, v_style="flowchart"):
     except Exception as e:
         return f"Error: {str(e)}"
 
-# 4. Helper for UI consistency
-def lang_ui(key):
-    langs = ["English", "Spanish", "French", "German", "Hindi", "Bengali"]
-    idx = langs.index(st.session_state.output_lang)
-    choice = st.selectbox("Output Language", langs, index=idx, key=f"lang_{key}")
-    st.session_state.output_lang = choice
-
 # --- MAIN INTERFACE ---
 st.title("🧠 StudyAI")
 
@@ -65,23 +58,11 @@ tabs = st.tabs(["📝 Quiz Generator", "🗂️ Flashcards", "🎨 Concept Visua
 # --- TAB 1: QUIZ ---
 with tabs[0]:
     st.header("Quiz Generator")
-    c1, c2 = st.columns([1, 2])
-    with c1:
-        lang_ui("quiz")
-        q_src = st.radio("Source Type", ["Text", "YouTube Link"], key="q_src")
-        q_count = st.slider("Number of Questions", 3, 15, 5, key="q_slider")
-    with c2:
-        q_in = st.text_input("Paste YouTube URL", key="q_yt") if q_src == "YouTube Link" else st.text_area("Paste Text", key="q_txt", height=200)
-        if st.button("Create Quiz ✍️"):
-            if q_in:
-                with st.spinner("Generating Quiz..."):
-                    res = call_groq("quiz", q_in, count=q_count)
-                    st.markdown(res)
-                    st.download_button("Download Quiz 📥", res, file_name="quiz.txt")
-            else:
-                st.warning("Please provide content.")
-
-# --- TAB 2: FLASHCARDS ---
-with tabs[1]:
-    st.header("Flashcards")
-    c1, c2 = st.columns([1, 2])
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        langs = ["English", "Spanish", "French", "German", "Hindi", "Bengali"]
+        st.session_state.output_lang = st.selectbox("Output Language", langs, key="lang_quiz")
+        q_src = st.radio("Source Type", ["Text", "YouTube Link"], key="q_src_radio")
+        q_count = st.slider("Number of Questions", 3, 15, 5, key="q_slider_val")
+    with col2:
+        q_input = st.text_input("Paste YouTube URL", key="q

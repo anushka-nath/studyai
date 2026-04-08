@@ -69,4 +69,79 @@ with tab1:
                 except Exception as e:
                     st.error(f"API Error: {str(e)}")
 
-# ──
+# ── TAB 2: NOTES GENERATOR ──
+with tab2:
+    st.subheader("Generate Clean Notes")
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        input_type = st.radio("Input Source", ["📋 Paste Text", "🎥 YouTube Link"])
+    
+    content_to_process = ""
+    
+    with col2:
+        if input_type == "📋 Paste Text":
+            content_to_process = st.text_area("Paste messy notes", height=200)
+            prompt_prefix = "Transform this text into structured, hierarchical study notes."
+        else:
+            yt_url = st.text_input("YouTube URL", placeholder="https://www.youtube.com/watch?v=...")
+            if yt_url:
+                vid_id = get_video_id(yt_url)
+                if vid_id:
+                    with st.spinner("Fetching transcript..."):
+                        try:
+                            # Use the class method correctly
+                            transcript_list = YouTubeTranscriptApi.list_transcripts(vid_id)
+                            
+                            try:
+                                # Try manual English first
+                                transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
+                            except:
+                                try:
+                                    # Fallback to auto-generated English
+                                    transcript = transcript_list.find_generated_transcript(['en'])
+                                except:
+                                    # Final fallback: Take the first available and translate to English
+                                    transcript = next(iter(transcript_list)).translate('en')
+                            
+                            data = transcript.fetch()
+                            content_to_process = " ".join([t['text'] for t in data])
+                            st.info(f"✅ Transcript loaded ({len(content_to_process.split())} words)")
+                        except Exception as e:
+                            # Final bulletproof fallback for older versions
+                            try:
+                                data = YouTubeTranscriptApi.get_transcript(vid_id)
+                                content_to_process = " ".join([t['text'] for t in data])
+                                st.info(f"✅ Transcript loaded via fallback ({len(content_to_process.split())} words)")
+                            except:
+                                st.error(f"❌ Transcript Error: {str(e)}")
+                                st.info("This video might not have captions enabled.")
+                else:
+                    st.error("❌ Invalid URL.")
+            prompt_prefix = "Summarize this transcript into professional study notes."
+
+    if st.button("Generate Notes 📄", key="notes_btn"):
+        if not content_to_process:
+            st.warning("Please provide content.")
+        else:
+            with st.spinner("Organizing notes..."):
+                prompt = f"{prompt_prefix}\nUse Markdown, include a Summary, Key Takeaways, and a Glossary.\n\nContent:\n{content_to_process}"
+                result = generate(prompt)
+                st.markdown(result)
+                st.download_button("Download Notes (.txt)", result, file_name="study_notes.txt")
+
+# ── TAB 3: FLASHCARDS ──
+with tab3:
+    st.subheader("Active Recall Flashcards")
+    fc_input = st.text_area("Paste text to create flashcards", height=200, placeholder="Paste a paragraph or chapter summary...")
+    
+    if st.button("Create Flashcards 🗂️"):
+        if not fc_input:
+            st.warning("Input required.")
+        else:
+            with st.spinner("Generating cards..."):
+                prompt = f"Create 5-10 flashcards from this text. Format each card as:\nFront: [Question]\nBack: [Answer]\n\nText:\n{fc_input}"
+                result = generate(prompt)
+                st.success("Flashcards Generated!")
+                st.markdown(result)
+                st.download_button("Download Flashcards", result, file_name="flashcards.txt")

@@ -11,8 +11,13 @@ st.title("🧠 StudyAI — Learn Smarter")
 st.markdown("Built by **Anushka Nath** | AI-powered study tools")
 st.divider()
 
-# API Key input
-api_key = st.text_input("Enter your Groq API Key", type="password", placeholder="gsk_...")
+# --- MODIFIED: API Key is now pulled from Secrets instead of an input box ---
+# This ensures the hiring team doesn't need to enter anything.
+try:
+    API_KEY = st.secrets["GROQ_API_KEY"]
+except KeyError:
+    st.error("GROQ_API_KEY not found in Streamlit Secrets!")
+    st.stop()
 
 # Helper function to extract video ID
 def get_video_id(url):
@@ -28,8 +33,9 @@ def get_video_id(url):
     return None
 
 # Helper function to generate with Groq
-def generate(api_key, prompt):
-    client = Groq(api_key=api_key)
+def generate(prompt):
+    # Uses the global API_KEY from secrets
+    client = Groq(api_key=API_KEY)
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}]
@@ -46,9 +52,7 @@ with tab1:
     num_questions = st.slider("Number of questions", 3, 10, 5)
 
     if st.button("Generate Quiz ⚡", key="quiz"):
-        if not api_key:
-            st.error("Please enter your Groq API key above!")
-        elif not notes_input:
+        if not notes_input:
             st.error("Please paste some notes first!")
         else:
             with st.spinner("Generating quiz..."):
@@ -64,7 +68,7 @@ Answer: A
 
 Notes:
 {notes_input}"""
-                    result = generate(api_key, prompt)
+                    result = generate(prompt)
                     st.success("Quiz Ready!")
                     st.markdown(result)
                 except Exception as e:
@@ -79,7 +83,7 @@ with tab2:
     content_to_process = ""
 
     if input_type == "📋 Paste Text":
-        raw_input = st.text_area("Paste raw text or messy notes", height=200, placeholder="Paste anything here...")
+        raw_input = st.text_area("Paste raw text or messy notes", height=200, placeholder="Paste anything here...", key="text_input_area")
         content_to_process = raw_input
         prompt_prefix = "Convert the following text into clean, well-structured study notes."
 
@@ -105,9 +109,7 @@ with tab2:
         prompt_prefix = "Convert the following YouTube video transcript into clean, well-structured study notes."
 
     if st.button("Generate Notes 📄", key="notes"):
-        if not api_key:
-            st.error("Please enter your Groq API key above!")
-        elif not content_to_process.strip():
+        if not content_to_process.strip():
             st.error("Please provide some content first!")
         else:
             with st.spinner("Generating notes..."):
@@ -119,7 +121,7 @@ Include a summary at the top.
 
 Content:
 {content_to_process}"""
-                    result = generate(api_key, prompt)
+                    result = generate(prompt)
                     st.success("Notes Ready!")
                     st.markdown(result)
                 except Exception as e:
